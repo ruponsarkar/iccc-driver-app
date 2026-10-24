@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "GMC ICCC Driver",
+    "slug": "iccc-driver-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.skaplink.icccdriver"
+    },
+    "android": {
+      "package": "com.skaplink.icccdriver"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow ICCC Driver to scan vehicle QR codes.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow ICCC Driver to record your location when starting or ending duty."
+        }
+      ],
+      "expo-secure-store",
+      "expo-status-bar"
+    ]
+  }
+}
