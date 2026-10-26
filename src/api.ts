@@ -20,8 +20,20 @@ const demoVehicle: Vehicle = { id: 'BUS-014', number: 'AS 01 UC 8803', type: 'Ci
 export const api = {
   async login(identifier: string, pin: string): Promise<Session> {
     if (!DEMO) return request('/auth/login', undefined, { identifier, pin }, 'POST');
-    if (!['DRV-014', '9876543210'].includes(identifier.toUpperCase()) || pin !== '1234') throw new Error('Use demo Driver ID DRV-014 and PIN 1234.');
-    return { token: 'demo-session', driver: { id: 'DRV-014', name: 'Amit Boro' } };
+    const demoPin = await storage.get<string>('demo-pin') ?? '1234';
+    if (!['DRV-014', '9876543210'].includes(identifier.toUpperCase()) || pin !== demoPin) throw new Error('Use demo Driver ID DRV-014 and your saved demo PIN.');
+    return { token: 'demo-session', driver: { id: 'DRV-014', name: 'Amit Boro' }, mustChangePin: !(await storage.get<boolean>('demo-pin-configured')) };
+  },
+  async changePin(session: Session, currentPin: string | undefined, newPin: string): Promise<void> {
+    if (!DEMO) {
+      const result = await request<{ mustChangePin: boolean }>('/auth/change-pin', session.token, { ...(currentPin ? { currentPin } : {}), newPin }, 'POST');
+      if (result.mustChangePin) throw new Error('The server did not confirm the PIN change. Please retry.');
+      return;
+    }
+    const demoPin = await storage.get<string>('demo-pin') ?? '1234';
+    if (session.mustChangePin ? currentPin !== undefined && currentPin !== demoPin : currentPin !== demoPin) throw new Error('The current PIN is incorrect.');
+    await storage.set('demo-pin', newPin);
+    await storage.set('demo-pin-configured', true);
   },
   async current(session: Session): Promise<Duty | null> {
     return DEMO ? storage.get<Duty>('duty') : request('/duties/current', session.token);

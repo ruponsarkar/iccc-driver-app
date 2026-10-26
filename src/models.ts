@@ -1,5 +1,5 @@
 export type Driver = { id: string; name: string };
-export type Session = { token: string; driver: Driver };
+export type Session = { token: string; driver: Driver; mustChangePin?: boolean };
 export type Vehicle = { id: string; number: string; type: string; gpsOnline: boolean; currentDriver: Driver | null; assignmentVersion?: string; qrValue?: string; division?: string | null };
 export type Page<T> = { items: T[]; total: number; limit: number; offset: number };
 export type Coordinates = { latitude: number; longitude: number; accuracy: number | null };

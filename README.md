@@ -16,7 +16,7 @@ Open with a compatible Expo Go (SDK 58), or use `npm run android` / `npm run ios
 
 SDK 58 requires an SDK 58-compatible Expo Go. If it is not yet available in your app store, use a native build (`npx expo run:android` / `npx expo run:ios`, with the platform toolchain installed) or the EAS preview APK below. Rebuild any existing native app after upgrading; an SDK 55 binary cannot load SDK 58. See the [SDK 58 upgrade notes](https://expo.dev/changelog/sdk-58).
 
-Demo login: **DRV-014** (or **9876543210**), PIN **1234**. Select the demo bus or enter **AS 01 UC 8803**. A QR can contain `BUS-014`, the registration, or JSON such as `{"vehicleId":"BUS-014"}`. Unknown demo vehicles are rejected.
+Demo login: **DRV-014** (or **9876543210**), initial PIN **1234**. On first login, set a new 4–8 digit PIN; future demo logins use the changed PIN. Select the demo bus or enter **AS 01 UC 8803**. A QR can contain `BUS-014`, the registration, or JSON such as `{"vehicleId":"BUS-014"}`. Unknown demo vehicles are rejected.
 
 Login is stored with Expo SecureStore on mobile. The PIN is never persisted. On reopening, the app restores the session and checks active duty. Expired server sessions return to login. Demo duty persists locally; live duty is fetched from the backend. Sign out is available when there is no active duty. The demo does not send assignments to any server. If GPS is unavailable, demo mode explicitly shows that location is unavailable; live mode requires location to start duty.
 
@@ -33,13 +33,16 @@ The backend adapter is `src/api.ts`; data types are in `src/models.ts`. This con
 
 | Method | Route | Request | Response |
 | --- | --- | --- | --- |
-| POST | `/auth/login` | `{ identifier, pin }` | `{ token, driver: { id, name } }` |
+| POST | `/auth/login` | `{ identifier, pin }` | `{ token, driver: { id, name }, mustChangePin: boolean }` |
+| POST | `/auth/change-pin` | `{ currentPin?, newPin }` | `{ mustChangePin: false }` |
 | GET | `/vehicles/:identifier` | — | `{ id, number, type, gpsOnline, currentDriver: { id, name } \| null, assignmentVersion, qrValue }` |
 | GET | `/duties/current` | — | `Duty` or JSON `null` |
 | POST | `/duties` | `{ vehicleId, assignmentVersion, replaceExistingDriver, location }` | `Duty` |
 | POST | `/duties/:id/end` | `{ location }` | HTTP 204 |
 
 `Duty`: `{ id, driver, vehicle, startedAt, location, status: "ACTIVE" }`. Timestamps are ISO 8601. Location is `{ latitude, longitude, accuracy }` (accuracy in meters) or `null` when unavailable at end duty. Errors should return a non-2xx response with `{ message }`; 401 clears the saved session.
+
+`mustChangePin` is `true` for a driver who authenticated with a temporary PIN. The app requires the change before loading duty or scanning a vehicle; on normal sessions, the driver can change their PIN from **Profile**. The backend must also restrict a temporary-PIN token to PIN-change operations until the change succeeds. `POST /auth/change-pin` is authenticated with the login token. For a temporary-PIN session, `currentPin` may be omitted; for a normal change, it is required. On success, update the PIN, clear the server-side force-change flag, keep the session valid, and return `{ "mustChangePin": false }` with HTTP 200. Require `newPin` to be 4–8 digits and return non-2xx `{ "message": "..." }` for validation or incorrect-current-PIN errors. Never return or log PIN values.
 
 The backend derives the driver from the token, validates authorization and GPS coordinates, timestamps actions, and atomically closes previous mobile assignments on explicit replacement. It enforces one active mobile duty per driver/vehicle and supports retries. `assignmentVersion` from vehicle lookup protects against stale confirmations; a changed assignment returns 409. The client checks current duty before retrying start/end, but the server remains authoritative. Add refresh-token handling to the adapter if your backend supports it. OTP is not implemented because no OTP backend was supplied; this build uses PIN login.
 
